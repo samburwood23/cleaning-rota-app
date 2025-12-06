@@ -23,6 +23,7 @@ A modern, beautiful cleaning task rotation app with glassmorphism UI design. Kee
 - **Vite** for lightning-fast development
 - **Glassmorphism CSS** for modern UI effects
 - **LocalStorage** for data persistence
+- **Capacitor** for native iOS and Android apps
 
 ## Getting Started
 
@@ -72,6 +73,23 @@ All your data is stored locally in your browser using `localStorage`. This means
 - ✅ Works offline
 - ✅ Your data stays private
 - ⚠️ Don't clear your browser data if you want to keep your history
+
+## 📱 Mobile Apps (iOS & Android)
+
+This app is configured with Capacitor to deploy to app stores!
+
+### Quick Commands
+```bash
+npm run cap:ios       # Open in Xcode (Mac only)
+npm run cap:android   # Open in Android Studio
+```
+
+### Full Deployment Guide
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete instructions on:
+- Building for iOS App Store
+- Building for Google Play Store
+- Creating app icons and screenshots
+- Signing and publishing your app
 
 ## License
 
