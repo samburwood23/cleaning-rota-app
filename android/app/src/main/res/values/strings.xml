@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cleaning Rota</string>
+    <string name="title_activity_main">Cleaning Rota</string>
+    <string name="package_name">com.cleaningrota.app</string>
+    <string name="custom_url_scheme">com.cleaningrota.app</string>
+</resources>
