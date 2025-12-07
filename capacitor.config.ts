@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.cleaningrota.app',
+  appId: 'com.cleaningrotaBurwood.app',
   appName: 'Cleaning Rota',
   webDir: 'dist',
   server: {
