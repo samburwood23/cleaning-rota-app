@@ -6,6 +6,7 @@ A modern, beautiful cleaning task rotation app with glassmorphism UI design. Kee
 
 - 🏠 **Housemate Management** - Add and manage household members
 - 📋 **Customizable Tasks** - Create custom cleaning tasks with default templates included
+- 🤖 **AI-Powered Task Descriptions** - Generate detailed cleaning instructions and tips using Hugging Face AI
 - 🔄 **Automatic Rotation** - Tasks automatically rotate between housemates each week
 - ✅ **Task Completion** - Mark tasks as complete and track progress
 - 🎨 **Beautiful Themes** - 5 gorgeous glassmorphism themes to choose from:
@@ -21,6 +22,7 @@ A modern, beautiful cleaning task rotation app with glassmorphism UI design. Kee
 
 - **React 18** with TypeScript
 - **Vite** for lightning-fast development
+- **Hugging Face AI** for intelligent task descriptions
 - **Glassmorphism CSS** for modern UI effects
 - **LocalStorage** for data persistence
 - **Capacitor** for native iOS and Android apps
@@ -33,6 +35,11 @@ A modern, beautiful cleaning task rotation app with glassmorphism UI design. Kee
 # Install dependencies
 npm install
 
+# Set up Hugging Face API key (for AI features)
+cp .env.example .env
+# Edit .env and add your Hugging Face API key
+# Get a free API key at: https://huggingface.co/settings/tokens
+
 # Start development server
 npm run dev
 
@@ -42,6 +49,27 @@ npm run build
 # Preview production build
 npm run preview
 ```
+
+### 🤖 AI Features Setup
+
+This app uses Hugging Face's AI models to generate intelligent task descriptions and cleaning tips!
+
+1. **Get a free API key**:
+   - Visit [Hugging Face Settings](https://huggingface.co/settings/tokens)
+   - Create a new token (read access is sufficient)
+   - Copy your token
+
+2. **Configure the app**:
+   - Copy `.env.example` to `.env`
+   - Add your API key: `VITE_HF_API_KEY=your_key_here`
+
+3. **Use AI features**:
+   - Click "Add Task" in the app
+   - Enter a task name (e.g., "Clean Bathroom")
+   - Click the "✨ AI Generate" button
+   - Get detailed descriptions and helpful cleaning tips instantly!
+
+**Note**: The app works without an API key, but AI features will be disabled.
 
 ### How to Use
 

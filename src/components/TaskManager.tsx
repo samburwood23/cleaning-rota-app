@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CleaningTask } from '../types';
+import { generateTaskDescription } from '../services/ai';
 
 interface TaskManagerProps {
   tasks: CleaningTask[];
@@ -24,6 +25,36 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
     frequency: 'weekly',
     icon: '✨',
   });
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedTips, setGeneratedTips] = useState<string[]>([]);
+
+  const handleGenerateDescription = async () => {
+    if (!newTask.name.trim()) {
+      alert('Please enter a task name first!');
+      return;
+    }
+
+    setIsGenerating(true);
+    setGeneratedTips([]);
+
+    try {
+      const result = await generateTaskDescription(
+        newTask.name,
+        newTask.description
+      );
+
+      setNewTask({
+        ...newTask,
+        description: result.description,
+      });
+      setGeneratedTips(result.tips);
+    } catch (error) {
+      console.error('Failed to generate description:', error);
+      alert('Failed to generate description. Please check your API key or try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +67,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
       };
       onAddTask(task);
       setNewTask({ name: '', description: '', frequency: 'weekly', icon: '✨' });
+      setGeneratedTips([]);
       setShowForm(false);
     }
   };
@@ -74,12 +106,42 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
               autoFocus
             />
           </div>
-          <input
-            type="text"
-            placeholder="Description (optional)..."
-            value={newTask.description}
-            onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-          />
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Description (optional)..."
+              value={newTask.description}
+              onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+              className="flex-1"
+            />
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleGenerateDescription}
+              disabled={isGenerating || !newTask.name.trim()}
+              title="Generate AI description and tips"
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              {isGenerating ? '🤖 Generating...' : '✨ AI Generate'}
+            </button>
+          </div>
+
+          {generatedTips.length > 0 && (
+            <div className="glass p-3" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
+              <div style={{ fontWeight: '600', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                💡 AI-Generated Tips:
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.85rem' }}>
+                {generatedTips.map((tip, index) => (
+                  <li key={index} style={{ marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <select
               value={newTask.frequency}
