@@ -5,6 +5,7 @@ A modern, beautiful cleaning task rotation app with glassmorphism UI design. Kee
 ## Features
 
 - 🏠 **Housemate Management** - Add and manage household members
+- 👥 **Multi-User SaaS** - Collaborate with your household in real-time with cloud sync
 - 📋 **Customizable Tasks** - Create custom cleaning tasks with default templates included
 - 🤖 **AI-Powered Task Descriptions** - Generate detailed cleaning instructions and tips using Hugging Face AI
 - 🔄 **Automatic Rotation** - Tasks automatically rotate between housemates each week
@@ -24,7 +25,8 @@ A modern, beautiful cleaning task rotation app with glassmorphism UI design. Kee
 - **Vite** for lightning-fast development
 - **Hugging Face AI** for intelligent task descriptions
 - **Glassmorphism CSS** for modern UI effects
-- **LocalStorage** for data persistence
+- **Supabase** for cloud database and real-time sync
+- **LocalStorage** fallback for offline-first usage
 - **Capacitor** for native iOS and Android apps
 
 ## Getting Started

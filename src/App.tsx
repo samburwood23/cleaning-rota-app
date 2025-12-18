@@ -3,6 +3,9 @@ import { Dashboard } from './components/Dashboard';
 import { HousemateManager } from './components/HousemateManager';
 import { TaskManager } from './components/TaskManager';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
+import { AuthModal } from './components/AuthModal';
+import { HouseholdSelector } from './components/HouseholdSelector';
+import { useAuth } from './contexts/AuthContext';
 import {
   Housemate,
   CleaningTask,
@@ -13,15 +16,17 @@ import {
 import {
   getHousemates,
   saveHousemates,
-  getTasks,
-  saveTasks,
-  getAssignments,
-  saveAssignments,
+  getTasks as getTasksLocal,
+  saveTasks as saveTasksLocal,
+  getAssignments as getAssignmentsLocal,
+  saveAssignments as saveAssignmentsLocal,
   getHistory,
   saveHistory,
   getSettings,
   saveSettings,
 } from './utils/storage';
+import * as dataService from './services/data';
+import { getHouseholdMembers } from './services/household';
 import { DEFAULT_TASKS } from './utils/defaults';
 import {
   getCurrentWeekStart,
@@ -30,6 +35,10 @@ import {
 } from './utils/rotation';
 
 function App() {
+  const { user, loading: authLoading, isConfigured, signOut } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [currentHouseholdId, setCurrentHouseholdId] = useState<string | null>(null);
+
   const [housemates, setHousemates] = useState<Housemate[]>([]);
   const [tasks, setTasks] = useState<CleaningTask[]>([]);
   const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
@@ -38,78 +47,113 @@ function App() {
   const [currentWeekStart, setCurrentWeekStart] = useState<string>('');
   const [showSettings, setShowSettings] = useState(false);
 
-  // Initialize data from localStorage
   useEffect(() => {
-    const loadedHousemates = getHousemates();
-    const loadedTasks = getTasks();
-    const loadedAssignments = getAssignments();
-    const loadedHistory = getHistory();
-    const settings = getSettings();
-
-    setHousemates(loadedHousemates);
-    setTasks(loadedTasks.length > 0 ? loadedTasks : DEFAULT_TASKS);
-    setAssignments(loadedAssignments);
-    setHistory(loadedHistory);
-    setTheme(settings.theme);
-
-    // If no tasks in storage, save defaults
-    if (loadedTasks.length === 0) {
-      saveTasks(DEFAULT_TASKS);
+    if (!authLoading && isConfigured && !user) {
+      setShowAuthModal(true);
+    } else {
+      setShowAuthModal(false);
     }
+  }, [user, authLoading, isConfigured]);
 
-    // Set current week start
-    const weekStart = getCurrentWeekStart(settings.rotationDay);
-    setCurrentWeekStart(weekStart);
+  useEffect(() => {
+    const initializeData = async () => {
+      const settings = getSettings();
+      setTheme(settings.theme);
 
-    // Generate assignments for current week if needed
-    if (loadedHousemates.length > 0 && loadedTasks.length > 0) {
-      if (needsNewAssignments(loadedAssignments, weekStart)) {
-        const newAssignments = generateWeeklyAssignments(
-          loadedHousemates,
-          loadedTasks.length > 0 ? loadedTasks : DEFAULT_TASKS,
-          loadedAssignments,
-          weekStart
-        );
-        setAssignments([...loadedAssignments, ...newAssignments]);
-        saveAssignments([...loadedAssignments, ...newAssignments]);
+      if (!isConfigured || !user) {
+        const loadedHousemates = getHousemates();
+        const loadedTasks = getTasksLocal();
+        const loadedAssignments = getAssignmentsLocal();
+        const loadedHistory = getHistory();
+
+        setHousemates(loadedHousemates);
+        setTasks(loadedTasks.length > 0 ? loadedTasks : DEFAULT_TASKS);
+        setAssignments(loadedAssignments);
+        setHistory(loadedHistory);
+
+        if (loadedTasks.length === 0) {
+          saveTasksLocal(DEFAULT_TASKS);
+        }
+
+        const weekStart = getCurrentWeekStart(settings.rotationDay);
+        setCurrentWeekStart(weekStart);
+
+        if (loadedHousemates.length > 0 && loadedTasks.length > 0) {
+          if (needsNewAssignments(loadedAssignments, weekStart)) {
+            const newAssignments = generateWeeklyAssignments(
+              loadedHousemates,
+              loadedTasks.length > 0 ? loadedTasks : DEFAULT_TASKS,
+              loadedAssignments,
+              weekStart
+            );
+            setAssignments([...loadedAssignments, ...newAssignments]);
+            saveAssignmentsLocal([...loadedAssignments, ...newAssignments]);
+          }
+        }
       }
-    }
-  }, []);
+    };
 
-  // Update theme in DOM
+    initializeData();
+  }, [user, isConfigured]);
+
+  useEffect(() => {
+    if (!currentHouseholdId || !isConfigured || !user) return;
+
+    const loadHouseholdData = async () => {
+      const { members } = await getHouseholdMembers(currentHouseholdId);
+      const housematesData: Housemate[] = members.map(m => ({
+        id: m.user_id,
+        name: m.display_name,
+        color: m.color,
+      }));
+      setHousemates(housematesData);
+
+      const loadedTasks = await dataService.getTasks(currentHouseholdId);
+      setTasks(loadedTasks.length > 0 ? loadedTasks : DEFAULT_TASKS);
+
+      const loadedAssignments = await dataService.getAssignments(currentHouseholdId);
+      setAssignments(loadedAssignments);
+
+      const settings = getSettings();
+      const weekStart = getCurrentWeekStart(settings.rotationDay);
+      setCurrentWeekStart(weekStart);
+
+      if (housematesData.length > 0 && loadedTasks.length > 0) {
+        if (needsNewAssignments(loadedAssignments, weekStart)) {
+          const newAssignments = generateWeeklyAssignments(
+            housematesData,
+            loadedTasks.length > 0 ? loadedTasks : DEFAULT_TASKS,
+            loadedAssignments,
+            weekStart
+          );
+          for (const assignment of newAssignments) {
+            await dataService.addAssignment(currentHouseholdId, assignment);
+          }
+          setAssignments([...loadedAssignments, ...newAssignments]);
+        }
+      }
+    };
+
+    loadHouseholdData();
+
+    const unsubTasks = dataService.subscribeToTasks(currentHouseholdId, setTasks);
+    const unsubAssignments = dataService.subscribeToAssignments(currentHouseholdId, setAssignments);
+
+    return () => {
+      unsubTasks?.();
+      unsubAssignments?.();
+    };
+  }, [currentHouseholdId, user, isConfigured]);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
-
-  // Check for new week and generate assignments
-  useEffect(() => {
-    if (housemates.length === 0 || tasks.length === 0) return;
-
-    const settings = getSettings();
-    const weekStart = getCurrentWeekStart(settings.rotationDay);
-
-    if (weekStart !== currentWeekStart) {
-      setCurrentWeekStart(weekStart);
-      if (needsNewAssignments(assignments, weekStart)) {
-        const newAssignments = generateWeeklyAssignments(
-          housemates,
-          tasks,
-          assignments,
-          weekStart
-        );
-        const updatedAssignments = [...assignments, ...newAssignments];
-        setAssignments(updatedAssignments);
-        saveAssignments(updatedAssignments);
-      }
-    }
-  }, [housemates, tasks]);
 
   const handleAddHousemate = (housemate: Housemate) => {
     const updated = [...housemates, housemate];
     setHousemates(updated);
     saveHousemates(updated);
 
-    // Generate new assignments if we have tasks
     if (tasks.length > 0 && currentWeekStart) {
       const newAssignments = generateWeeklyAssignments(
         updated,
@@ -118,7 +162,7 @@ function App() {
         currentWeekStart
       );
       setAssignments(newAssignments);
-      saveAssignments(newAssignments);
+      saveAssignmentsLocal(newAssignments);
     }
   };
 
@@ -127,7 +171,6 @@ function App() {
     setHousemates(updated);
     saveHousemates(updated);
 
-    // Regenerate assignments
     if (updated.length > 0 && tasks.length > 0 && currentWeekStart) {
       const newAssignments = generateWeeklyAssignments(
         updated,
@@ -136,66 +179,77 @@ function App() {
         currentWeekStart
       );
       setAssignments(newAssignments);
-      saveAssignments(newAssignments);
+      saveAssignmentsLocal(newAssignments);
     } else {
       setAssignments([]);
-      saveAssignments([]);
+      saveAssignmentsLocal([]);
     }
   };
 
-  const handleAddTask = (task: CleaningTask) => {
-    const updated = [...tasks, task];
-    setTasks(updated);
-    saveTasks(updated);
+  const handleAddTask = async (task: CleaningTask) => {
+    if (isConfigured && currentHouseholdId) {
+      await dataService.addTask(currentHouseholdId, task);
+    } else {
+      const updated = [...tasks, task];
+      setTasks(updated);
+      saveTasksLocal(updated);
 
-    // Generate new assignments if we have housemates
-    if (housemates.length > 0 && currentWeekStart) {
-      const newAssignments = generateWeeklyAssignments(
-        housemates,
-        updated,
-        assignments,
-        currentWeekStart
-      );
-      setAssignments(newAssignments);
-      saveAssignments(newAssignments);
+      if (housemates.length > 0 && currentWeekStart) {
+        const newAssignments = generateWeeklyAssignments(
+          housemates,
+          updated,
+          assignments,
+          currentWeekStart
+        );
+        setAssignments(newAssignments);
+        saveAssignmentsLocal(newAssignments);
+      }
     }
   };
 
-  const handleRemoveTask = (id: string) => {
-    const updated = tasks.filter((t) => t.id !== id);
-    setTasks(updated);
-    saveTasks(updated);
+  const handleRemoveTask = async (id: string) => {
+    if (isConfigured && currentHouseholdId) {
+      await dataService.deleteTask(currentHouseholdId, id);
+    } else {
+      const updated = tasks.filter((t) => t.id !== id);
+      setTasks(updated);
+      saveTasksLocal(updated);
 
-    // Remove assignments for this task
-    const updatedAssignments = assignments.filter((a) => a.taskId !== id);
-    setAssignments(updatedAssignments);
-    saveAssignments(updatedAssignments);
+      const updatedAssignments = assignments.filter((a) => a.taskId !== id);
+      setAssignments(updatedAssignments);
+      saveAssignmentsLocal(updatedAssignments);
+    }
   };
 
-  const handleCompleteTask = (assignmentId: string) => {
+  const handleCompleteTask = async (assignmentId: string) => {
     const assignment = assignments.find((a) => a.id === assignmentId);
     if (!assignment) return;
 
-    // Update assignment
-    const updatedAssignments = assignments.map((a) =>
-      a.id === assignmentId
-        ? { ...a, completed: true, completedAt: new Date().toISOString() }
-        : a
-    );
-    setAssignments(updatedAssignments);
-    saveAssignments(updatedAssignments);
+    if (isConfigured && currentHouseholdId) {
+      await dataService.updateAssignment(currentHouseholdId, assignmentId, {
+        completed: true,
+        completedAt: new Date().toISOString(),
+      });
+    } else {
+      const updatedAssignments = assignments.map((a) =>
+        a.id === assignmentId
+          ? { ...a, completed: true, completedAt: new Date().toISOString() }
+          : a
+      );
+      setAssignments(updatedAssignments);
+      saveAssignmentsLocal(updatedAssignments);
 
-    // Add to history
-    const historyEntry: CompletionHistory = {
-      id: `history-${Date.now()}`,
-      taskId: assignment.taskId,
-      housemateId: assignment.housemateId,
-      completedAt: new Date().toISOString(),
-      weekStartDate: assignment.weekStartDate,
-    };
-    const updatedHistory = [...history, historyEntry];
-    setHistory(updatedHistory);
-    saveHistory(updatedHistory);
+      const historyEntry: CompletionHistory = {
+        id: 'history-' + Date.now(),
+        taskId: assignment.taskId,
+        housemateId: assignment.housemateId,
+        completedAt: new Date().toISOString(),
+        weekStartDate: assignment.weekStartDate,
+      };
+      const updatedHistory = [...history, historyEntry];
+      setHistory(updatedHistory);
+      saveHistory(updatedHistory);
+    }
   };
 
   const handleThemeChange = (newTheme: Theme) => {
@@ -204,17 +258,46 @@ function App() {
     saveSettings({ ...settings, theme: newTheme });
   };
 
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <div style={{ fontSize: '2rem' }}>Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <>
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+
       <div style={{ marginBottom: '2rem' }}>
+        {isConfigured && user && (
+          <div className="mb-3">
+            <HouseholdSelector
+              currentHouseholdId={currentHouseholdId}
+              onSelectHousehold={setCurrentHouseholdId}
+            />
+          </div>
+        )}
+
         <div className="flex justify-between items-center mb-4">
           <div></div>
-          <button
-            className="btn"
-            onClick={() => setShowSettings(!showSettings)}
-          >
-            {showSettings ? '← Back to Dashboard' : '⚙️ Settings'}
-          </button>
+          <div className="flex gap-2 items-center">
+            {isConfigured && user && (
+              <button
+                className="btn-small"
+                onClick={() => signOut()}
+              >
+                Sign Out
+              </button>
+            )}
+            <button
+              className="btn"
+              onClick={() => setShowSettings(!showSettings)}
+            >
+              {showSettings ? '← Back to Dashboard' : '⚙️ Settings'}
+            </button>
+          </div>
         </div>
 
         {!showSettings ? (

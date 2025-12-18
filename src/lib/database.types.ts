@@ -37,6 +37,7 @@ export interface Database {
           theme?: string
           rotation_day?: number
         }
+        Relationships: []
       }
       household_members: {
         Row: {
@@ -66,6 +67,20 @@ export interface Database {
           role?: 'admin' | 'member'
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "household_members_household_id_fkey"
+            columns: ["household_id"]
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_members_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       tasks: {
         Row: {
@@ -95,6 +110,14 @@ export interface Database {
           icon?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_household_id_fkey"
+            columns: ["household_id"]
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       task_assignments: {
         Row: {
@@ -127,6 +150,26 @@ export interface Database {
           completed_at?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignments_task_id_fkey"
+            columns: ["task_id"]
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignments_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignments_household_id_fkey"
+            columns: ["household_id"]
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {
@@ -136,6 +179,9 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
       [_ in never]: never
     }
   }
