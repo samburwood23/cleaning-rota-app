@@ -20,6 +20,7 @@
     "@capacitor/core": "^7.4.4",
     "@capacitor/ios": "^7.4.4",
     "@huggingface/inference": "^4.13.5",
+    "@supabase/supabase-js": "^2.88.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
