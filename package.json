@@ -15,10 +15,14 @@
     "cap:run:android": "npm run cap:sync && npx cap run android"
   },
   "dependencies": {
-    "@capacitor/android": "^7.4.4",
-    "@capacitor/cli": "^7.4.4",
-    "@capacitor/core": "^7.4.4",
-    "@capacitor/ios": "^7.4.4",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/push-notifications": "^8.0.0",
+    "@capacitor/toast": "^8.0.0",
     "@huggingface/inference": "^4.13.5",
     "@supabase/supabase-js": "^2.88.0",
     "react": "^18.2.0",

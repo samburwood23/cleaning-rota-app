@@ -6,15 +6,20 @@ import {
   type Household,
 } from '../services/household';
 import { useAuth } from '../contexts/AuthContext';
+import { shareInviteCode } from '../services/deeplinks';
 
 interface HouseholdSelectorProps {
   currentHouseholdId: string | null;
   onSelectHousehold: (householdId: string) => void;
+  pendingInviteCode?: string | null;
+  onInviteCodeHandled?: () => void;
 }
 
 export const HouseholdSelector: React.FC<HouseholdSelectorProps> = ({
   currentHouseholdId,
   onSelectHousehold,
+  pendingInviteCode,
+  onInviteCodeHandled,
 }) => {
   const { user } = useAuth();
   const [households, setHouseholds] = useState<Household[]>([]);
@@ -33,6 +38,17 @@ export const HouseholdSelector: React.FC<HouseholdSelectorProps> = ({
       loadHouseholds();
     }
   }, [user]);
+
+  // Handle deep link invite codes
+  useEffect(() => {
+    if (pendingInviteCode) {
+      setInviteCode(pendingInviteCode);
+      setModalMode('join');
+      setShowModal(true);
+      setError('');
+      onInviteCodeHandled?.();
+    }
+  }, [pendingInviteCode, onInviteCodeHandled]);
 
   const loadHouseholds = async () => {
     const { households: data, error } = await getUserHouseholds();
@@ -90,6 +106,12 @@ export const HouseholdSelector: React.FC<HouseholdSelectorProps> = ({
     setLoading(false);
   };
 
+  const handleShareInvite = async () => {
+    if (currentHousehold) {
+      await shareInviteCode(currentHousehold.invite_code, currentHousehold.name);
+    }
+  };
+
   const currentHousehold = households.find(h => h.id === currentHouseholdId);
 
   return (
@@ -118,13 +140,10 @@ export const HouseholdSelector: React.FC<HouseholdSelectorProps> = ({
           {currentHousehold && (
             <button
               className="btn-small"
-              onClick={() => {
-                navigator.clipboard.writeText(currentHousehold.invite_code);
-                alert(`Invite code copied: ${currentHousehold.invite_code}`);
-              }}
-              title="Copy invite code"
+              onClick={handleShareInvite}
+              title="Share invite code"
             >
-              📋 Invite
+              📤 Share
             </button>
           )}
           <button

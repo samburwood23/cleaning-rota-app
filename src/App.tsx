@@ -28,6 +28,8 @@ import {
 import * as dataService from './services/data';
 import { getHouseholdMembers } from './services/household';
 import { DEFAULT_TASKS } from './utils/defaults';
+import { initializePushNotifications } from './services/notifications';
+import { initializeDeepLinking } from './services/deeplinks';
 import {
   getCurrentWeekStart,
   generateWeeklyAssignments,
@@ -38,6 +40,7 @@ function App() {
   const { user, loading: authLoading, isConfigured, signOut } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentHouseholdId, setCurrentHouseholdId] = useState<string | null>(null);
+  const [pendingInviteCode, setPendingInviteCode] = useState<string | null>(null);
 
   const [housemates, setHousemates] = useState<Housemate[]>([]);
   const [tasks, setTasks] = useState<CleaningTask[]>([]);
@@ -148,6 +151,22 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Initialize native features (push notifications and deep linking)
+  useEffect(() => {
+    if (isConfigured && user) {
+      // Initialize push notifications
+      initializePushNotifications().catch(error => {
+        console.error('Failed to initialize push notifications:', error);
+      });
+    }
+
+    // Initialize deep linking (works on native platforms only)
+    initializeDeepLinking((inviteCode) => {
+      console.log('Deep link join with code:', inviteCode);
+      setPendingInviteCode(inviteCode);
+    });
+  }, [user, isConfigured]);
 
   const handleAddHousemate = (housemate: Housemate) => {
     const updated = [...housemates, housemate];
@@ -276,6 +295,8 @@ function App() {
             <HouseholdSelector
               currentHouseholdId={currentHouseholdId}
               onSelectHousehold={setCurrentHouseholdId}
+              pendingInviteCode={pendingInviteCode}
+              onInviteCodeHandled={() => setPendingInviteCode(null)}
             />
           </div>
         )}
